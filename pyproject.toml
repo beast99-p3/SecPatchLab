@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secpatchlab"
+version = "0.1.0"
+description = "Ubuntu security monitor and patch validation sandbox"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "SecPatchLab" }
+]
+dependencies = [
+  "typer>=0.12",
+  "requests>=2.31",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "pydantic>=2.6",
+]
+
+[project.scripts]
+secpatchlab = "secpatchlab.cli:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

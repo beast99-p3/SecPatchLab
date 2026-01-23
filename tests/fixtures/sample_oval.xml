@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+  <definitions>
+    <definition id="def-1" version="1" class="vulnerability">
+      <metadata>
+        <reference source="USN" ref_id="USN-0000-1" />
+        <reference source="CVE" ref_id="CVE-2020-0001" />
+        <advisory>
+          <severity>High</severity>
+        </advisory>
+      </metadata>
+      <criteria>
+        <criterion test_ref="test-1" />
+      </criteria>
+    </definition>
+  </definitions>
+
+  <tests>
+    <dpkginfo_test id="test-1" version="1">
+      <object object_ref="obj-1" />
+      <state state_ref="state-1" />
+    </dpkginfo_test>
+  </tests>
+
+  <objects>
+    <dpkginfo_object id="obj-1" version="1">
+      <name>openssl</name>
+    </dpkginfo_object>
+  </objects>
+
+  <states>
+    <dpkginfo_state id="state-1" version="1">
+      <evr>1.2.3-4</evr>
+    </dpkginfo_state>
+  </states>
+</oval_definitions>
