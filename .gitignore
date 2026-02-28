@@ -1,7 +1,28 @@
-.venv/
+# Virtual environments
+.venv*/
+*.egg-info/
+
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Scan and validation outputs
 runs/*
 !runs/.gitkeep
+demo-output/
+*.sarif
+*.sbom.json
+
+# Frontend
 frontend/node_modules/
 frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db

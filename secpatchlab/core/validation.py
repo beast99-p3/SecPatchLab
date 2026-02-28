@@ -20,6 +20,63 @@ def _check_docker_available() -> None:
         raise CommandError("Docker not available") from exc
 
 
+def _get_security_options(run_dir: Path) -> list[str]:
+    """Build Docker security options with graceful fallback."""
+    security_opts = []
+    
+    # Try to use seccomp profile
+    seccomp_path = BASE_DIR / "docker" / "seccomp-secpatchlab.json"
+    if seccomp_path.exists():
+        security_opts.extend([
+            "--security-opt", f"seccomp={seccomp_path}",
+        ])
+    else:
+        # Fallback to default seccomp
+        security_opts.extend([
+            "--security-opt", "seccomp=unconfined",
+        ])
+    
+    # Add AppArmor if available (Ubuntu/Debian)
+    try:
+        run_cmd(["which", "aa-status"], timeout=5)
+        security_opts.extend([
+            "--security-opt", "apparmor=docker-default",
+        ])
+    except:
+        pass  # AppArmor not available, continue without it
+    
+    return security_opts
+
+
+def _build_hardened_run_command(run_dir: Path, image_tag: str, package: str) -> list[str]:
+    """Build hardened Docker run command with security controls."""
+    cmd = [
+        "docker", "run", "--rm",
+        # Resource limits
+        "--memory", "512m",
+        "--cpus", "1.0",
+        "--pids-limit", "128",
+        # Security controls
+        "--cap-drop", "ALL",
+        "--read-only",
+        "--tmpfs", "/tmp:rw,noexec,nosuid,size=100m",
+        "--user", "1000:1000",
+        # Volume mapping
+        "-v", f"{str(run_dir)}:/out",
+        # Network isolation
+        "--network", "none",
+    ]
+    
+    # Add security options with fallback
+    security_opts = _get_security_options(run_dir)
+    cmd.extend(security_opts)
+    
+    # Add image and command
+    cmd.extend([image_tag, package])
+    
+    return cmd
+
+
 def _write_status(run_dir: Path, data: dict) -> None:
     write_json(run_dir / "status.json", data)
 
@@ -86,16 +143,27 @@ def _run_validation(run_id: str, package: str, patch_path: Optional[str], releas
         artifacts_dir = run_dir / "artifacts"
         ensure_dir(artifacts_dir)
 
-        run_cmd(
-            [
-                "docker", "run", "--rm",
-                "-v", f"{str(run_dir)}:/out",
-                image_tag,
-                package,
-            ],
-            timeout=1800,
-            log_file=log_path,
-        )
+        # Build hardened Docker run command
+        hardened_run_cmd = _build_hardened_run_command(run_dir, image_tag, package)
+        commands.append(" ".join(hardened_run_cmd))
+        
+        try:
+            run_cmd(hardened_run_cmd, timeout=1800, log_file=log_path)
+        except CommandError as exc:
+            # Fallback to basic Docker run if hardened options fail
+            if "unknown flag" in str(exc) or "not supported" in str(exc):
+                basic_run_cmd = [
+                    "docker", "run", "--rm",
+                    "-v", f"{str(run_dir)}:/out",
+                    "--memory", "512m",
+                    "--cap-drop", "ALL",
+                    image_tag,
+                    package,
+                ]
+                commands.append(f"# Fallback: {' '.join(basic_run_cmd)}")
+                run_cmd(basic_run_cmd, timeout=1800, log_file=log_path)
+            else:
+                raise
 
         for p in (run_dir / "artifacts").iterdir():
             if p.is_file():

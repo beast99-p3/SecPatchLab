@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "secpatchlab"
-version = "0.1.0"
+version = "0.2.0"
 description = "Ubuntu security monitor and patch validation sandbox"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,10 +18,15 @@ dependencies = [
   "fastapi>=0.110",
   "uvicorn>=0.29",
   "pydantic>=2.6",
+  "python-debian>=0.1.49",
 ]
 
 [project.scripts]
 secpatchlab = "secpatchlab.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["secpatchlab*"]
+exclude = ["tests*", "frontend*", "backend*", "docker*", "runs*", "docs*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

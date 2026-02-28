@@ -7,7 +7,7 @@ from secpatchlab.core import dpkg
 from secpatchlab.core import oval
 from secpatchlab.core import storage
 from secpatchlab.core.models import Finding, ScanResult
-from secpatchlab.core.utils import CommandError
+from secpatchlab.core.utils import CommandError, is_windows, run_cmd_wsl, wsl_available
 
 SEVERITY_ORDER = {
     "Critical": 0,
@@ -20,10 +20,18 @@ SEVERITY_ORDER = {
 
 def get_codename() -> str:
     """Read the Ubuntu codename from /etc/os-release."""
-    path = Path("/etc/os-release")
-    if not path.exists():
-        raise CommandError("/etc/os-release not found")
-    data = path.read_text(encoding="utf-8")
+    if is_windows():
+        if not wsl_available():
+            raise CommandError(
+                "Real scans on Windows require WSL + an Ubuntu distro. Install WSL (e.g. `wsl --install -d Ubuntu`) "
+                "or run scans from Ubuntu/WSL/Docker. Otherwise, use seed-demo for UI demos."
+            )
+        data = run_cmd_wsl(["cat", "/etc/os-release"], timeout=10).stdout
+    else:
+        path = Path("/etc/os-release")
+        if not path.exists():
+            raise CommandError("/etc/os-release not found")
+        data = path.read_text(encoding="utf-8")
     for line in data.splitlines():
         if line.startswith("VERSION_CODENAME="):
             return line.split("=", 1)[1].strip().strip('"')

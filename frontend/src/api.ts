@@ -12,7 +12,12 @@ export async function runScan(top?: number, refresh?: boolean): Promise<{ scan_i
       const data = await res.json();
       if (data?.detail) detail = data.detail;
     } catch {
-      // ignore
+      try {
+        const text = (await res.text()).trim();
+        if (text) detail = text.length > 300 ? text.slice(0, 300) + "…" : text;
+      } catch {
+        // ignore
+      }
     }
     throw new Error(detail);
   }

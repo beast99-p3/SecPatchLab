@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { runScan, validatePackage, listRuns, getRun, getRunLog, getArtifacts } from "./api";
+import { runScan, validatePackage, listRuns, getRun, getRunLog, getArtifacts, listScans, getScan } from "./api";
 import { Finding, ValidationRun } from "./types";
 
 export default function App() {
@@ -10,6 +10,8 @@ export default function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanErrorMessage, setScanErrorMessage] = useState<string>("");
   const [scanInfo, setScanInfo] = useState<{ scan_id: string; codename: string; total_packages: number } | null>(null);
+  const [availableScans, setAvailableScans] = useState<{ scan_id: string; codename: string; findings: number }[]>([]);
+  const [selectedScanId, setSelectedScanId] = useState<string>("");
   const [isValidateModalOpen, setIsValidateModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [patchFilePath, setPatchFilePath] = useState<string>("");
@@ -25,6 +27,14 @@ export default function App() {
     setValidationRuns(data);
   };
 
+  const fetchScans = async () => {
+    const data = await listScans();
+    setAvailableScans(data);
+    if (!selectedScanId && data.length > 0) {
+      setSelectedScanId(data[0].scan_id);
+    }
+  };
+
   const runScanNow = async () => {
     setIsScanning(true);
     setScanErrorMessage("");
@@ -36,12 +46,31 @@ export default function App() {
         codename: res.results.codename,
         total_packages: res.results.total_packages,
       });
+      await fetchScans();
     } catch (err: any) {
       setScanFindings([]);
       setScanInfo(null);
       setScanErrorMessage(err?.message || "Scan failed");
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const loadSelectedScan = async () => {
+    if (!selectedScanId) return;
+    setScanErrorMessage("");
+    try {
+      const res = await getScan(selectedScanId);
+      setScanFindings(res.findings || []);
+      setScanInfo({
+        scan_id: res.scan_id,
+        codename: res.codename,
+        total_packages: res.total_packages,
+      });
+    } catch (err: any) {
+      setScanFindings([]);
+      setScanInfo(null);
+      setScanErrorMessage(err?.message || "Failed to load scan");
     }
   };
 
@@ -69,6 +98,7 @@ export default function App() {
 
   useEffect(() => {
     fetchRuns();
+    fetchScans();
   }, []);
 
   return (
@@ -97,6 +127,21 @@ export default function App() {
             <label><input type="checkbox" checked={refreshFeeds} onChange={(e) => setRefreshFeeds(e.target.checked)} /> Refresh OVAL feeds</label>
             <button onClick={runScanNow} disabled={isScanning}>{isScanning ? "Scanning..." : "Run Scan"}</button>
           </div>
+
+          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+            <label>
+              Load previous scan{" "}
+              <select value={selectedScanId} onChange={(e) => setSelectedScanId(e.target.value)} style={{ marginLeft: 8 }}>
+                {availableScans.map((s) => (
+                  <option key={s.scan_id} value={s.scan_id}>
+                    {s.scan_id} ({s.codename}, {s.findings} findings)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="secondary" onClick={loadSelectedScan} disabled={!selectedScanId}>Load</button>
+          </div>
+
           {scanErrorMessage && (
             <div style={{ marginBottom: 12, color: "#b91c1c" }}>
               {scanErrorMessage}

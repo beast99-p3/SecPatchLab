@@ -22,10 +22,23 @@ RUN mkdir -p /debs && cp -v /build/*.deb /debs/
 FROM ubuntu:${RELEASE} AS runtime
 ARG PACKAGE
 
+# Create non-root user for security
+RUN groupadd -r secpatch && useradd -r -g secpatch -u 1000 secpatch
+
 COPY --from=builder /debs /debs
 COPY entrypoint.sh /entrypoint.sh
 
-RUN apt-get update && apt-get install -y /debs/*.deb && apt-get clean
-RUN chmod +x /entrypoint.sh
+# Install packages and clean up
+RUN apt-get update && apt-get install -y /debs/*.deb && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Set up directories and permissions
+RUN mkdir -p /out/artifacts && \
+    chown -R secpatch:secpatch /out && \
+    chmod +x /entrypoint.sh
+
+# Switch to non-root user
+USER secpatch
 
 ENTRYPOINT ["/entrypoint.sh"]

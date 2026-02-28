@@ -45,6 +45,8 @@ def run_scan(req: ScanRequest):
         return {"scan_id": scan_id, "results": result.model_dump()}
     except CommandError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Scan failed: {exc}")
 
 
 @app.get("/api/scans")
